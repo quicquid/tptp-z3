@@ -24,9 +24,22 @@ message(STATUS "Z3_FOUND: ${Z3_FOUND}")
 message(STATUS "Found Z3 ${Z3_VERSION_STRING}")
 message(STATUS "Z3_DIR: ${Z3_DIR}")
 
+# static + gcc fix
+SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+SET(CMAKE_EXE_LINKER_FLAGS "-static")
+
 add_executable(z3_tptp5 tptp5.cpp tptp5.lex.cpp)
 target_include_directories(z3_tptp5 PRIVATE ${Z3_CXX_INCLUDE_DIRS})
-target_link_libraries(z3_tptp5 PRIVATE ${Z3_LIBRARIES})
+if (CMAKE_COMPILER_IS_GNUCXX)
+    # avoid static linking problems with C++ threads
+    # see https://stackoverflow.com/questions/58848694/gcc-whole-archive-recipe-for-static-linking-to-pthread-stopped-working-in-rec
+    message(STATUS "Adding workaround for gcc static linking against pthread")
+    target_link_libraries(z3_tptp5 PRIVATE ${Z3_LIBRARIES} -pthread -Wl,--whole-archive -lrt -lpthread -Wl,--no-whole-archive)
+else ()
+  target_link_libraries(z3_tptp5 PRIVATE ${Z3_LIBRARIES})
+endif()
+
+
 
 if ("${CMAKE_SYSTEM_NAME}" MATCHES "[Ww]indows")
   # On Windows we need to copy the Z3 libraries
